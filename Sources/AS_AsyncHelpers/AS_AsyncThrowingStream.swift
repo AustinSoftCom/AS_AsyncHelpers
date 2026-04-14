@@ -36,6 +36,8 @@ public actor AS_AsyncThrowingBroadcast<Element: Sendable> {
 	let storage = ThrowingChannelStorage<Element>()
 	var isFinished = false
 
+	public init() {}
+
 	/// Broadcast a value to all subscribers
 	/// - Parameter element: The value to broadcast
 	public func broadcast(_ element: Element) async {
