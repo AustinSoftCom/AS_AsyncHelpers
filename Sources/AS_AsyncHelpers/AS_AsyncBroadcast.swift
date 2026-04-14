@@ -40,6 +40,8 @@ public actor AS_AsyncBroadcast<Element: Sendable> {
 	let storage = ChannelStorage<Element>()
 	var isFinished = false
 
+	public init() {}
+
 	/// Broadcast a value to all subscribers
 	/// - Parameter element: The value to broadcast
 	///
