@@ -1,10 +1,13 @@
+//  Copyright © 2026 AustinSoft.com. All rights reserved worldwide.
+//  Created by Glenn L. Austin on 6/20/26
+
 import XCTest
 import Synchronization
 @testable import AS_AsyncHelpers
 
-final class AS_AsyncBroadcastSingleSubscriberTests: XCTestCase {
+final class AsyncBroadcastSingleSubscriberTests: XCTestCase {
     func testReceivesAllBroadcastedValues() async {
-        let stream = AS_AsyncBroadcast<Int>()
+        let stream = AsyncBroadcast<Int>()
         let subscription = stream.subscribe()
 
         await stream.broadcast(1)
@@ -20,7 +23,7 @@ final class AS_AsyncBroadcastSingleSubscriberTests: XCTestCase {
     }
 
     func testFinishEndsStream() async {
-        let stream = AS_AsyncBroadcast<String>()
+        let stream = AsyncBroadcast<String>()
         let subscription = stream.subscribe()
 
         await stream.broadcast("hello")
@@ -34,7 +37,7 @@ final class AS_AsyncBroadcastSingleSubscriberTests: XCTestCase {
     }
 
     func testEmptyStreamFinishesImmediately() async {
-        let stream = AS_AsyncBroadcast<Int>()
+        let stream = AsyncBroadcast<Int>()
         let subscription = stream.subscribe()
 
         await stream.finish()
@@ -47,7 +50,7 @@ final class AS_AsyncBroadcastSingleSubscriberTests: XCTestCase {
     }
 
     func testBroadcastAfterFinishIsIgnored() async {
-        let stream = AS_AsyncBroadcast<Int>()
+        let stream = AsyncBroadcast<Int>()
         let subscription = stream.subscribe()
 
         await stream.broadcast(1)
@@ -62,9 +65,9 @@ final class AS_AsyncBroadcastSingleSubscriberTests: XCTestCase {
     }
 }
 
-final class AS_AsyncBroadcastMultipleSubscriberTests: XCTestCase {
+final class AsyncBroadcastMultipleSubscriberTests: XCTestCase {
     func testTwoSubscribersReceiveSameValues() async {
-        let stream = AS_AsyncBroadcast<Int>()
+        let stream = AsyncBroadcast<Int>()
         let sub1 = stream.subscribe()
         let sub2 = stream.subscribe()
 
@@ -83,7 +86,7 @@ final class AS_AsyncBroadcastMultipleSubscriberTests: XCTestCase {
     }
 
     func testThreeSubscribersReceiveSameValues() async {
-        let stream = AS_AsyncBroadcast<Int>()
+        let stream = AsyncBroadcast<Int>()
         let sub1 = stream.subscribe()
         let sub2 = stream.subscribe()
         let sub3 = stream.subscribe()
@@ -104,7 +107,7 @@ final class AS_AsyncBroadcastMultipleSubscriberTests: XCTestCase {
     }
 
     func testSubscriberCountTracksActiveSubscriptions() async {
-        let stream = AS_AsyncBroadcast<Int>()
+        let stream = AsyncBroadcast<Int>()
 
         let count0 = await stream.subscriberCount
         XCTAssertEqual(count0, 0)
@@ -125,7 +128,7 @@ final class AS_AsyncBroadcastMultipleSubscriberTests: XCTestCase {
     }
 
     func testConcurrentSubscribersReceiveAllValues() async {
-        let stream = AS_AsyncBroadcast<Int>()
+        let stream = AsyncBroadcast<Int>()
         let sub1 = stream.subscribe()
         let sub2 = stream.subscribe()
 
@@ -155,9 +158,9 @@ final class AS_AsyncBroadcastMultipleSubscriberTests: XCTestCase {
     }
 }
 
-final class AS_AsyncBroadcastLateSubscriberTests: XCTestCase {
+final class AsyncBroadcastLateSubscriberTests: XCTestCase {
     func testLateSubscriberOnlyReceivesSubsequentValues() async {
-        let stream = AS_AsyncBroadcast<Int>()
+        let stream = AsyncBroadcast<Int>()
         let earlySub = stream.subscribe()
 
         await stream.broadcast(1)
@@ -179,7 +182,7 @@ final class AS_AsyncBroadcastLateSubscriberTests: XCTestCase {
     }
 
     func testSubscribingAfterFinishReceivesNothing() async {
-        let stream = AS_AsyncBroadcast<Int>()
+        let stream = AsyncBroadcast<Int>()
         let earlySub = stream.subscribe()
 
         await stream.broadcast(1)
@@ -203,9 +206,9 @@ final class AS_AsyncBroadcastLateSubscriberTests: XCTestCase {
     }
 }
 
-final class AS_AsyncBroadcastCancellationTests: XCTestCase {
+final class AsyncBroadcastCancellationTests: XCTestCase {
     func testCancelledSubscriberDoesNotAffectOthers() async {
-        let stream = AS_AsyncBroadcast<Int>()
+        let stream = AsyncBroadcast<Int>()
         let sub1 = stream.subscribe()
         let sub2 = stream.subscribe()
 
@@ -235,9 +238,9 @@ final class AS_AsyncBroadcastCancellationTests: XCTestCase {
     }
 }
 
-final class AS_AsyncBroadcastTypeTests: XCTestCase {
+final class AsyncBroadcastTypeTests: XCTestCase {
     func testWorksWithStrings() async {
-        let stream = AS_AsyncBroadcast<String>()
+        let stream = AsyncBroadcast<String>()
         let sub = stream.subscribe()
 
         await stream.broadcast("hello")
@@ -255,7 +258,7 @@ final class AS_AsyncBroadcastTypeTests: XCTestCase {
             let y: Int
         }
 
-        let stream = AS_AsyncBroadcast<Point>()
+        let stream = AsyncBroadcast<Point>()
         let sub1 = stream.subscribe()
         let sub2 = stream.subscribe()
 
@@ -275,7 +278,7 @@ final class AS_AsyncBroadcastTypeTests: XCTestCase {
     }
 
     func testWorksWithOptionals() async {
-        let stream = AS_AsyncBroadcast<Int?>()
+        let stream = AsyncBroadcast<Int?>()
         let sub = stream.subscribe()
 
         await stream.broadcast(1)
@@ -292,9 +295,9 @@ final class AS_AsyncBroadcastTypeTests: XCTestCase {
     }
 }
 
-final class AS_AsyncBroadcastSinkTests: XCTestCase {
+final class AsyncBroadcastSinkTests: XCTestCase {
     func testSinkReceivesAllValues() async {
-        let stream = AS_AsyncBroadcast<Int>()
+        let stream = AsyncBroadcast<Int>()
         let received = Mutex<[Int]>([])
 
         let token = stream.sink { value in
@@ -317,7 +320,7 @@ final class AS_AsyncBroadcastSinkTests: XCTestCase {
     }
 
     func testSinkCancellation() async {
-        let stream = AS_AsyncBroadcast<Int>()
+        let stream = AsyncBroadcast<Int>()
         let received = Mutex<[Int]>([])
 
         let token = stream.sink { value in
@@ -338,7 +341,7 @@ final class AS_AsyncBroadcastSinkTests: XCTestCase {
     }
 
     func testMultipleSinksReceiveSameValues() async {
-        let stream = AS_AsyncBroadcast<Int>()
+        let stream = AsyncBroadcast<Int>()
         let received1 = Mutex<[Int]>([])
         let received2 = Mutex<[Int]>([])
 
@@ -365,9 +368,9 @@ final class AS_AsyncBroadcastSinkTests: XCTestCase {
     }
 }
 
-final class AS_AsyncBroadcastFinishBehaviorTests: XCTestCase {
+final class AsyncBroadcastFinishBehaviorTests: XCTestCase {
     func testFinishClearsSubscriberCount() async {
-        let stream = AS_AsyncBroadcast<Int>()
+        let stream = AsyncBroadcast<Int>()
 
         // Start consuming in background tasks to keep subscriptions alive
         let sub1 = stream.subscribe()
@@ -392,7 +395,7 @@ final class AS_AsyncBroadcastFinishBehaviorTests: XCTestCase {
     }
 
     func testMultipleFinishCallsAreSafe() async {
-        let stream = AS_AsyncBroadcast<Int>()
+        let stream = AsyncBroadcast<Int>()
         let sub = stream.subscribe()
 
         await stream.broadcast(1)

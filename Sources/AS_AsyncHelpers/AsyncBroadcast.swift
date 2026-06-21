@@ -15,7 +15,7 @@ import Synchronization
 ///
 /// Usage:
 /// ```swift
-/// let broadcaster = AsyncMultiChannel<String>()
+/// let broadcaster = AsyncBroadcast<String>()
 ///
 /// // Multiple consumers
 /// Task {
@@ -33,7 +33,7 @@ import Synchronization
 /// // Producer
 /// await broadcaster.broadcast("Hello")
 /// ```
-public actor AS_AsyncBroadcast<Element: Sendable> {
+public actor AsyncBroadcast<Element: Sendable> {
 	/// Thread-safe channel storage so `subscribe()` can register channels
 	/// synchronously (before returning), eliminating the race where broadcasts
 	/// arrive before the channel is registered.
@@ -124,45 +124,5 @@ public actor AS_AsyncBroadcast<Element: Sendable> {
 	/// Get the current number of active subscribers
 	public var subscriberCount: Int {
 		storage.count
-	}
-}
-
-// MARK: - Thread-Safe Channel Storage
-
-/// Lock-protected dictionary for channel registration.
-/// Allows `subscribe()` to register channels synchronously from any thread
-/// while `broadcast()` reads the channel list from the actor.
-final class ChannelStorage<Element: Sendable>: Sendable {
-	private let channels: Mutex<[UUID: AsyncChannel<Element>]> = .init([:])
-
-	func insert(_ channel: AsyncChannel<Element>, id: UUID) {
-		channels.withLock {
-			$0[id] = channel
-		}
-	}
-
-	func remove(_ id: UUID) {
-		let channel = channels.withLock {
-			$0.removeValue(forKey: id)
-		}
-		channel?.finish()
-	}
-
-	func allChannels() -> [AsyncChannel<Element>] {
-		channels.withLock {
-			Array($0.values)
-		}
-	}
-
-	func removeAll() {
-		channels.withLock {
-			$0.removeAll()
-		}
-	}
-
-	var count: Int {
-		channels.withLock {
-			$0.count
-		}
 	}
 }

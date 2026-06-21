@@ -1,17 +1,15 @@
+//  Copyright © 2026 AustinSoft.com. All rights reserved worldwide.
+//  Created by Glenn L. Austin on 6/20/26
+
 import XCTest
 import Synchronization
 @testable import AS_AsyncHelpers
 
-enum TestError: Error, Equatable {
-    case intentional
-    case other
-}
-
 // MARK: - Single Subscriber Tests
 
-final class AS_AsyncThrowingBroadcastSingleSubscriberTests: XCTestCase {
+final class AsyncThrowingBroadcastSingleSubscriberTests: XCTestCase {
     func testReceivesAllBroadcastedValues() async {
-        let stream = AS_AsyncThrowingBroadcast<Int>()
+        let stream = AsyncThrowingBroadcast<Int>()
         let subscription = stream.subscribe()
 
         await stream.broadcast(1)
@@ -31,7 +29,7 @@ final class AS_AsyncThrowingBroadcastSingleSubscriberTests: XCTestCase {
     }
 
     func testFinishEndsStream() async {
-        let stream = AS_AsyncThrowingBroadcast<String>()
+        let stream = AsyncThrowingBroadcast<String>()
         let subscription = stream.subscribe()
 
         await stream.broadcast("hello")
@@ -49,7 +47,7 @@ final class AS_AsyncThrowingBroadcastSingleSubscriberTests: XCTestCase {
     }
 
     func testEmptyStreamFinishesImmediately() async {
-        let stream = AS_AsyncThrowingBroadcast<Int>()
+        let stream = AsyncThrowingBroadcast<Int>()
         let subscription = stream.subscribe()
 
         await stream.finish()
@@ -66,7 +64,7 @@ final class AS_AsyncThrowingBroadcastSingleSubscriberTests: XCTestCase {
     }
 
     func testBroadcastAfterFinishIsIgnored() async {
-        let stream = AS_AsyncThrowingBroadcast<Int>()
+        let stream = AsyncThrowingBroadcast<Int>()
         let subscription = stream.subscribe()
 
         await stream.broadcast(1)
@@ -87,9 +85,9 @@ final class AS_AsyncThrowingBroadcastSingleSubscriberTests: XCTestCase {
 
 // MARK: - Error Propagation Tests
 
-final class AS_AsyncThrowingBroadcastErrorTests: XCTestCase {
+final class AsyncThrowingBroadcastErrorTests: XCTestCase {
     func testFailPropagatesErrorToSubscriber() async {
-        let stream = AS_AsyncThrowingBroadcast<Int>()
+        let stream = AsyncThrowingBroadcast<Int>()
         let subscription = stream.subscribe()
 
         await stream.broadcast(1)
@@ -109,7 +107,7 @@ final class AS_AsyncThrowingBroadcastErrorTests: XCTestCase {
     }
 
     func testFailPropagatesErrorToAllSubscribers() async {
-        let stream = AS_AsyncThrowingBroadcast<Int>()
+        let stream = AsyncThrowingBroadcast<Int>()
         let sub1 = stream.subscribe()
         let sub2 = stream.subscribe()
 
@@ -136,7 +134,7 @@ final class AS_AsyncThrowingBroadcastErrorTests: XCTestCase {
     }
 
     func testBroadcastAfterFailIsIgnored() async {
-        let stream = AS_AsyncThrowingBroadcast<Int>()
+        let stream = AsyncThrowingBroadcast<Int>()
         let subscription = stream.subscribe()
 
         await stream.fail(with: TestError.intentional)
@@ -156,7 +154,7 @@ final class AS_AsyncThrowingBroadcastErrorTests: XCTestCase {
     }
 
     func testFailClearsSubscriberCount() async {
-        let stream = AS_AsyncThrowingBroadcast<Int>()
+        let stream = AsyncThrowingBroadcast<Int>()
         let sub1 = stream.subscribe()
         let sub2 = stream.subscribe()
 
@@ -184,9 +182,9 @@ final class AS_AsyncThrowingBroadcastErrorTests: XCTestCase {
 
 // MARK: - Multiple Subscriber Tests
 
-final class AS_AsyncThrowingBroadcastMultipleSubscriberTests: XCTestCase {
+final class AsyncThrowingBroadcastMultipleSubscriberTests: XCTestCase {
     func testTwoSubscribersReceiveSameValues() async {
-        let stream = AS_AsyncThrowingBroadcast<Int>()
+        let stream = AsyncThrowingBroadcast<Int>()
         let sub1 = stream.subscribe()
         let sub2 = stream.subscribe()
 
@@ -205,7 +203,7 @@ final class AS_AsyncThrowingBroadcastMultipleSubscriberTests: XCTestCase {
     }
 
     func testConcurrentSubscribersReceiveAllValues() async {
-        let stream = AS_AsyncThrowingBroadcast<Int>()
+        let stream = AsyncThrowingBroadcast<Int>()
         let sub1 = stream.subscribe()
         let sub2 = stream.subscribe()
 
@@ -237,9 +235,9 @@ final class AS_AsyncThrowingBroadcastMultipleSubscriberTests: XCTestCase {
 
 // MARK: - Cancellation Tests
 
-final class AS_AsyncThrowingBroadcastCancellationTests: XCTestCase {
+final class AsyncThrowingBroadcastCancellationTests: XCTestCase {
     func testCancelledSubscriberDoesNotAffectOthers() async {
-        let stream = AS_AsyncThrowingBroadcast<Int>()
+        let stream = AsyncThrowingBroadcast<Int>()
         let sub1 = stream.subscribe()
         let sub2 = stream.subscribe()
 
@@ -271,9 +269,9 @@ final class AS_AsyncThrowingBroadcastCancellationTests: XCTestCase {
 
 // MARK: - Sink Tests
 
-final class AS_AsyncThrowingBroadcastSinkTests: XCTestCase {
+final class AsyncThrowingBroadcastSinkTests: XCTestCase {
     func testSinkReceivesAllValues() async {
-        let stream = AS_AsyncThrowingBroadcast<Int>()
+        let stream = AsyncThrowingBroadcast<Int>()
         let received = Mutex<[Int]>([])
 
         let token = stream.sink(onValue: { value in
@@ -294,7 +292,7 @@ final class AS_AsyncThrowingBroadcastSinkTests: XCTestCase {
     }
 
     func testSinkReceivesError() async {
-        let stream = AS_AsyncThrowingBroadcast<Int>()
+        let stream = AsyncThrowingBroadcast<Int>()
         let received = Mutex<[Int]>([])
         let caughtError = Mutex<(any Error)?>(nil)
 
@@ -321,7 +319,7 @@ final class AS_AsyncThrowingBroadcastSinkTests: XCTestCase {
     }
 
     func testSinkCancellation() async {
-        let stream = AS_AsyncThrowingBroadcast<Int>()
+        let stream = AsyncThrowingBroadcast<Int>()
         let received = Mutex<[Int]>([])
 
         let token = stream.sink(onValue: { value in
@@ -344,9 +342,9 @@ final class AS_AsyncThrowingBroadcastSinkTests: XCTestCase {
 
 // MARK: - Finish Behavior Tests
 
-final class AS_AsyncThrowingBroadcastFinishBehaviorTests: XCTestCase {
+final class AsyncThrowingBroadcastFinishBehaviorTests: XCTestCase {
     func testFinishClearsSubscriberCount() async {
-        let stream = AS_AsyncThrowingBroadcast<Int>()
+        let stream = AsyncThrowingBroadcast<Int>()
         let sub1 = stream.subscribe()
         let sub2 = stream.subscribe()
 
@@ -372,7 +370,7 @@ final class AS_AsyncThrowingBroadcastFinishBehaviorTests: XCTestCase {
     }
 
     func testMultipleFinishCallsAreSafe() async {
-        let stream = AS_AsyncThrowingBroadcast<Int>()
+        let stream = AsyncThrowingBroadcast<Int>()
         let sub = stream.subscribe()
 
         await stream.broadcast(1)
@@ -386,7 +384,7 @@ final class AS_AsyncThrowingBroadcastFinishBehaviorTests: XCTestCase {
     }
 
     func testMultipleFailCallsAreSafe() async {
-        let stream = AS_AsyncThrowingBroadcast<Int>()
+        let stream = AsyncThrowingBroadcast<Int>()
         let sub = stream.subscribe()
 
         await stream.broadcast(1)

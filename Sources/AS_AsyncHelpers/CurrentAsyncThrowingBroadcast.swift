@@ -9,13 +9,13 @@ import Synchronization
 
 /// A multi-consumer broadcaster with error propagation.
 ///
-/// Like ``AS_AsyncBroadcast``, this allows multiple independent consumers to
+/// Like ``AsyncBroadcast``, this allows multiple independent consumers to
 /// receive all broadcasted values. Additionally, errors can be propagated to
 /// all subscribers via ``fail(with:)``.
 ///
 /// Usage:
 /// ```swift
-/// let broadcaster = AS_AsyncThrowingBroadcast<String>()
+/// let broadcaster = CurrentAsyncThrowingBroadcast<String>(initialValue: "Foo")
 ///
 /// // Multiple consumers
 /// Task {
@@ -32,11 +32,18 @@ import Synchronization
 /// await broadcaster.broadcast("Hello")
 /// await broadcaster.fail(with: MyError.somethingWentWrong)
 /// ```
-public actor AS_AsyncThrowingBroadcast<Element: Sendable> {
+public actor CurrentAsyncThrowingBroadcast<Element: Sendable> {
 	let storage = ThrowingChannelStorage<Element>()
+	let currentValue: Mutex<Element>
 	var isFinished = false
 
-	public init() {}
+	public var value: Element {
+		currentValue.withLock { $0 }
+	}
+
+	public init(initialValue: Element) {
+		currentValue = .init(initialValue)
+	}
 
 	/// Broadcast a value to all subscribers
 	/// - Parameter element: The value to broadcast
@@ -68,8 +75,13 @@ public actor AS_AsyncThrowingBroadcast<Element: Sendable> {
 
 		storage.insert(channel, id: id)
 
+		let currentValue = self.currentValue.withLock { $0 }
+
 		return AsyncThrowingStream { continuation in
 			Task { [weak self] in
+				// Send the current value first
+				continuation.yield(currentValue)
+
 				do {
 					for try await element in channel {
 						continuation.yield(element)
@@ -134,44 +146,5 @@ public actor AS_AsyncThrowingBroadcast<Element: Sendable> {
 	/// Get the current number of active subscribers
 	public var subscriberCount: Int {
 		storage.count
-	}
-}
-
-// MARK: - Thread-Safe Throwing Channel Storage
-
-/// Lock-protected dictionary for throwing channel registration.
-/// Mirrors `ChannelStorage` but wraps `AsyncThrowingChannel` instead.
-final class ThrowingChannelStorage<Element: Sendable>: Sendable {
-	private let channels: Mutex<[UUID: AsyncThrowingChannel<Element, any Error>]> = .init([:])
-
-	func insert(_ channel: AsyncThrowingChannel<Element, any Error>, id: UUID) {
-		channels.withLock {
-			$0[id] = channel
-		}
-	}
-
-	func remove(_ id: UUID) {
-		let channel = channels.withLock {
-			$0.removeValue(forKey: id)
-		}
-		channel?.finish()
-	}
-
-	func allChannels() -> [AsyncThrowingChannel<Element, any Error>] {
-		channels.withLock {
-			Array($0.values)
-		}
-	}
-
-	func removeAll() {
-		channels.withLock {
-			$0.removeAll()
-		}
-	}
-
-	var count: Int {
-		channels.withLock {
-			$0.count
-		}
 	}
 }
