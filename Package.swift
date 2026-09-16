@@ -20,7 +20,8 @@ let package = Package(
         ),
     ],
 	dependencies: [
-		.package(url: "https://github.com/apple/swift-async-algorithms.git", from: "1.0.4")
+		.package(url: "https://github.com/apple/swift-async-algorithms.git", from: "1.0.4"),
+		.package(url: "https://gitserver.austinsoft.com/git/AustinSoftSPM/AS_SwiftLog.git", from: "7.1.0"),
 	],
     targets: [
         // Targets are the basic building blocks of a package, defining a module or a test suite.
@@ -29,6 +30,7 @@ let package = Package(
             name: "AS_AsyncHelpers",
 			dependencies: [
 				.product(name: "AsyncAlgorithms", package: "swift-async-algorithms"),
+				.product(name: "AS_SwiftLog", package: "AS_SwiftLog"),
 			]
         ),
         .testTarget(

@@ -9,12 +9,12 @@ import Synchronization
 
 final class AsyncThrowingBroadcastSingleSubscriberTests: XCTestCase {
     func testReceivesAllBroadcastedValues() async {
-        let stream = AsyncThrowingBroadcast<Int>()
+        let stream = AsyncThrowingBroadcast<Int, Error>()
         let subscription = stream.subscribe()
 
-        await stream.broadcast(1)
-        await stream.broadcast(2)
-        await stream.broadcast(3)
+        await stream.yield(1)
+        await stream.yield(2)
+        await stream.yield(3)
         await stream.finish()
 
         var received: [Int] = []
@@ -29,10 +29,10 @@ final class AsyncThrowingBroadcastSingleSubscriberTests: XCTestCase {
     }
 
     func testFinishEndsStream() async {
-        let stream = AsyncThrowingBroadcast<String>()
+        let stream = AsyncThrowingBroadcast<String, Error>()
         let subscription = stream.subscribe()
 
-        await stream.broadcast("hello")
+        await stream.yield("hello")
         await stream.finish()
 
         var received: [String] = []
@@ -47,7 +47,7 @@ final class AsyncThrowingBroadcastSingleSubscriberTests: XCTestCase {
     }
 
     func testEmptyStreamFinishesImmediately() async {
-        let stream = AsyncThrowingBroadcast<Int>()
+        let stream = AsyncThrowingBroadcast<Int, Error>()
         let subscription = stream.subscribe()
 
         await stream.finish()
@@ -64,12 +64,12 @@ final class AsyncThrowingBroadcastSingleSubscriberTests: XCTestCase {
     }
 
     func testBroadcastAfterFinishIsIgnored() async {
-        let stream = AsyncThrowingBroadcast<Int>()
+        let stream = AsyncThrowingBroadcast<Int, Error>()
         let subscription = stream.subscribe()
 
-        await stream.broadcast(1)
+        await stream.yield(1)
         await stream.finish()
-        await stream.broadcast(2)
+        await stream.yield(2)
 
         var received: [Int] = []
         do {
@@ -87,11 +87,11 @@ final class AsyncThrowingBroadcastSingleSubscriberTests: XCTestCase {
 
 final class AsyncThrowingBroadcastErrorTests: XCTestCase {
     func testFailPropagatesErrorToSubscriber() async {
-        let stream = AsyncThrowingBroadcast<Int>()
+        let stream = AsyncThrowingBroadcast<Int, Error>()
         let subscription = stream.subscribe()
 
-        await stream.broadcast(1)
-        await stream.fail(with: TestError.intentional)
+        await stream.yield(1)
+        await stream.finish(throwing: TestError.intentional)
 
         var received: [Int] = []
         var caughtError: (any Error)?
@@ -107,12 +107,12 @@ final class AsyncThrowingBroadcastErrorTests: XCTestCase {
     }
 
     func testFailPropagatesErrorToAllSubscribers() async {
-        let stream = AsyncThrowingBroadcast<Int>()
+        let stream = AsyncThrowingBroadcast<Int, Error>()
         let sub1 = stream.subscribe()
         let sub2 = stream.subscribe()
 
-        await stream.broadcast(42)
-        await stream.fail(with: TestError.intentional)
+        await stream.yield(42)
+		await stream.finish(throwing: TestError.intentional)
 
         var error1: (any Error)?
         var error2: (any Error)?
@@ -134,11 +134,11 @@ final class AsyncThrowingBroadcastErrorTests: XCTestCase {
     }
 
     func testBroadcastAfterFailIsIgnored() async {
-        let stream = AsyncThrowingBroadcast<Int>()
+        let stream = AsyncThrowingBroadcast<Int, Error>()
         let subscription = stream.subscribe()
 
-        await stream.fail(with: TestError.intentional)
-        await stream.broadcast(1)
+		await stream.finish(throwing: TestError.intentional)
+        await stream.yield(1)
 
         var received: [Int] = []
         var caughtError: (any Error)?
@@ -154,7 +154,7 @@ final class AsyncThrowingBroadcastErrorTests: XCTestCase {
     }
 
     func testFailClearsSubscriberCount() async {
-        let stream = AsyncThrowingBroadcast<Int>()
+        let stream = AsyncThrowingBroadcast<Int, Error>()
         let sub1 = stream.subscribe()
         let sub2 = stream.subscribe()
 
@@ -170,7 +170,7 @@ final class AsyncThrowingBroadcastErrorTests: XCTestCase {
         let countBefore = await stream.subscriberCount
         XCTAssertEqual(countBefore, 2)
 
-        await stream.fail(with: TestError.intentional)
+		await stream.finish(throwing: TestError.intentional)
 
         let countAfter = await stream.subscriberCount
         XCTAssertEqual(countAfter, 0)
@@ -184,12 +184,12 @@ final class AsyncThrowingBroadcastErrorTests: XCTestCase {
 
 final class AsyncThrowingBroadcastMultipleSubscriberTests: XCTestCase {
     func testTwoSubscribersReceiveSameValues() async {
-        let stream = AsyncThrowingBroadcast<Int>()
+        let stream = AsyncThrowingBroadcast<Int, Error>()
         let sub1 = stream.subscribe()
         let sub2 = stream.subscribe()
 
-        await stream.broadcast(10)
-        await stream.broadcast(20)
+        await stream.yield(10)
+        await stream.yield(20)
         await stream.finish()
 
         var received1: [Int] = []
@@ -203,7 +203,7 @@ final class AsyncThrowingBroadcastMultipleSubscriberTests: XCTestCase {
     }
 
     func testConcurrentSubscribersReceiveAllValues() async {
-        let stream = AsyncThrowingBroadcast<Int>()
+        let stream = AsyncThrowingBroadcast<Int, Error>()
         let sub1 = stream.subscribe()
         let sub2 = stream.subscribe()
 
@@ -221,7 +221,7 @@ final class AsyncThrowingBroadcastMultipleSubscriberTests: XCTestCase {
         }()
 
         for value in values {
-            await stream.broadcast(value)
+            await stream.yield(value)
         }
         await stream.finish()
 
@@ -237,7 +237,7 @@ final class AsyncThrowingBroadcastMultipleSubscriberTests: XCTestCase {
 
 final class AsyncThrowingBroadcastCancellationTests: XCTestCase {
     func testCancelledSubscriberDoesNotAffectOthers() async {
-        let stream = AsyncThrowingBroadcast<Int>()
+        let stream = AsyncThrowingBroadcast<Int, Error>()
         let sub1 = stream.subscribe()
         let sub2 = stream.subscribe()
 
@@ -253,13 +253,13 @@ final class AsyncThrowingBroadcastCancellationTests: XCTestCase {
             return result
         }()
 
-        await stream.broadcast(1)
+        await stream.yield(1)
 
         task1.cancel()
         try? await Task.sleep(for: .milliseconds(50))
 
-        await stream.broadcast(2)
-        await stream.broadcast(3)
+        await stream.yield(2)
+        await stream.yield(3)
         await stream.finish()
 
         let result2 = await collected2
@@ -271,7 +271,7 @@ final class AsyncThrowingBroadcastCancellationTests: XCTestCase {
 
 final class AsyncThrowingBroadcastSinkTests: XCTestCase {
     func testSinkReceivesAllValues() async {
-        let stream = AsyncThrowingBroadcast<Int>()
+        let stream = AsyncThrowingBroadcast<Int, Error>()
         let received = Mutex<[Int]>([])
 
         let token = stream.sink(onValue: { value in
@@ -280,9 +280,9 @@ final class AsyncThrowingBroadcastSinkTests: XCTestCase {
 
         try? await Task.sleep(for: .milliseconds(50))
 
-        await stream.broadcast(1)
-        await stream.broadcast(2)
-        await stream.broadcast(3)
+        await stream.yield(1)
+        await stream.yield(2)
+        await stream.yield(3)
         await stream.finish()
 
         await token.value
@@ -292,7 +292,7 @@ final class AsyncThrowingBroadcastSinkTests: XCTestCase {
     }
 
     func testSinkReceivesError() async {
-        let stream = AsyncThrowingBroadcast<Int>()
+        let stream = AsyncThrowingBroadcast<Int, Error>()
         let received = Mutex<[Int]>([])
         let caughtError = Mutex<(any Error)?>(nil)
 
@@ -307,8 +307,8 @@ final class AsyncThrowingBroadcastSinkTests: XCTestCase {
 
         try? await Task.sleep(for: .milliseconds(50))
 
-        await stream.broadcast(1)
-        await stream.fail(with: TestError.intentional)
+        await stream.yield(1)
+		await stream.finish(throwing: TestError.intentional)
 
         await token.value
 
@@ -319,7 +319,7 @@ final class AsyncThrowingBroadcastSinkTests: XCTestCase {
     }
 
     func testSinkCancellation() async {
-        let stream = AsyncThrowingBroadcast<Int>()
+        let stream = AsyncThrowingBroadcast<Int, Error>()
         let received = Mutex<[Int]>([])
 
         let token = stream.sink(onValue: { value in
@@ -328,11 +328,11 @@ final class AsyncThrowingBroadcastSinkTests: XCTestCase {
 
         try? await Task.sleep(for: .milliseconds(50))
 
-        await stream.broadcast(1)
+        await stream.yield(1)
         token.cancel()
         try? await Task.sleep(for: .milliseconds(50))
 
-        await stream.broadcast(2)
+        await stream.yield(2)
         await stream.finish()
 
         let result = received.withLock { $0 }
@@ -344,7 +344,7 @@ final class AsyncThrowingBroadcastSinkTests: XCTestCase {
 
 final class AsyncThrowingBroadcastFinishBehaviorTests: XCTestCase {
     func testFinishClearsSubscriberCount() async {
-        let stream = AsyncThrowingBroadcast<Int>()
+        let stream = AsyncThrowingBroadcast<Int, Error>()
         let sub1 = stream.subscribe()
         let sub2 = stream.subscribe()
 
@@ -370,10 +370,10 @@ final class AsyncThrowingBroadcastFinishBehaviorTests: XCTestCase {
     }
 
     func testMultipleFinishCallsAreSafe() async {
-        let stream = AsyncThrowingBroadcast<Int>()
+        let stream = AsyncThrowingBroadcast<Int, Error>()
         let sub = stream.subscribe()
 
-        await stream.broadcast(1)
+        await stream.yield(1)
         await stream.finish()
         await stream.finish()
         await stream.finish()
@@ -384,12 +384,12 @@ final class AsyncThrowingBroadcastFinishBehaviorTests: XCTestCase {
     }
 
     func testMultipleFailCallsAreSafe() async {
-        let stream = AsyncThrowingBroadcast<Int>()
+        let stream = AsyncThrowingBroadcast<Int, Error>()
         let sub = stream.subscribe()
 
-        await stream.broadcast(1)
-        await stream.fail(with: TestError.intentional)
-        await stream.fail(with: TestError.other)
+        await stream.yield(1)
+		await stream.finish(throwing: TestError.intentional)
+		await stream.finish(throwing: TestError.other)
 
         var received: [Int] = []
         var caughtError: (any Error)?
