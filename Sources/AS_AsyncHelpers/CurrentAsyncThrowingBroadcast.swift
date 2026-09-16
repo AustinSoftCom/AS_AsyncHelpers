@@ -29,37 +29,35 @@ import Synchronization
 /// }
 ///
 /// // Producer
-/// await broadcaster.broadcast("Hello")
+/// await broadcaster.yield("Hello")
 /// await broadcaster.fail(with: MyError.somethingWentWrong)
 /// ```
-public actor CurrentAsyncThrowingBroadcast<Element: Sendable> {
-	let storage = ThrowingChannelStorage<Element>()
-	let currentValue: Mutex<Element>
-	var isFinished = false
-
+public actor CurrentAsyncThrowingBroadcast<Element: Sendable, Failure: Error> {
+	let core: BroadcastCore<Element, Failure>
+	
 	public var value: Element {
-		currentValue.withLock { $0 }
+		core.value
 	}
-
+	
 	public init(initialValue: Element) {
-		currentValue = .init(initialValue)
+		self.core = BroadcastCore(initialValue: .value(initialValue))
+	}
+	
+	public init(initialValue: Element, stream: consuming AsyncThrowingStream<Element, Failure>) {
+		self.core = .init(initialValue: .value(initialValue), stream: stream)
 	}
 
 	/// Broadcast a value to all subscribers
 	/// - Parameter element: The value to broadcast
-	public func broadcast(_ element: Element) async {
-		guard !isFinished else { return }
-
-		let channels = storage.allChannels()
-		await withTaskGroup(of: Void.self) { group in
-			for channel in channels {
-				group.addTask {
-					await channel.send(element)
-				}
-			}
-		}
+	public func yield(_ element: Element) async {
+		await core.yield(element)
 	}
-
+	
+	@available(*, deprecated, renamed: "yield", message: "Renamed to yield so AsyncStream code doesn't *have* to change")
+	public func broadcast(_ element: Element) async {
+		await core.yield(element)
+	}
+	
 	/// Subscribe to the broadcast stream
 	/// - Returns: An AsyncThrowingStream that receives all broadcasted values
 	///
@@ -69,58 +67,52 @@ public actor CurrentAsyncThrowingBroadcast<Element: Sendable> {
 	/// The channel is registered **synchronously** before this method returns,
 	/// so no broadcasts can be missed due to a registration race.
 	nonisolated
-	public func subscribe() -> AsyncThrowingStream<Element, any Error> {
+	public func subscribe(bufferSize: Int = 64) -> AsyncThrowingStream<Element, Failure> where Failure == any Error {
 		let id = UUID()
-		let channel = AsyncThrowingChannel<Element, any Error>()
-
-		storage.insert(channel, id: id)
-
-		let currentValue = self.currentValue.withLock { $0 }
-
-		return AsyncThrowingStream { continuation in
-			Task { [weak self] in
-				// Send the current value first
-				continuation.yield(currentValue)
-
-				do {
-					for try await element in channel {
-						continuation.yield(element)
+		let (stream, continuation) = AsyncThrowingStream<Element, Failure>.makeStream(
+			bufferingPolicy: .bufferingNewest(bufferSize)
+		)
+		let core = self.core
+		continuation.onTermination = { @Sendable _ in core.remove(id) }   // set before register
+		
+		let drops = Mutex(0)
+		
+		core.register(
+			.init(
+				send: {
+					if case .dropped = continuation.yield($0) {
+						drops.withLock { $0 += 1 }
 					}
-					continuation.finish()
-				} catch {
-					continuation.finish(throwing: error)
+				},
+				finish: { error in
+					let n = drops.withLock { $0 }
+					if n > 0 {
+						log.error("subscriber \(id) dropped \(n) elements")
+					}
+					if let error {
+						continuation.finish(throwing: error)
+					} else {
+						continuation.finish()
+					}
 				}
-
-				if let self {
-					self.storage.remove(id)
-				}
-			}
-
-			continuation.onTermination = { @Sendable [weak self] _ in
-				self?.storage.remove(id)
-			}
-		}
+			),
+			id: id
+		)
+		
+		return stream
 	}
-
-	/// Finish all active channels and prevent new broadcasts
+	
+	/// Finish all active channels normally
 	public func finish() {
-		isFinished = true
-		for channel in storage.allChannels() {
-			channel.finish()
-		}
-		storage.removeAll()
+		core.finish()
 	}
-
+	
 	/// Finish all active channels with an error
 	/// - Parameter error: The error to propagate to all subscribers
-	public func fail(with error: any Error) {
-		isFinished = true
-		for channel in storage.allChannels() {
-			channel.fail(error)
-		}
-		storage.removeAll()
+	public func finish(throwing error: Failure) {
+		core.finish(throwing: error)
 	}
-
+	
 	/// Subscribe with a callback instead of async iteration
 	/// - Parameters:
 	///   - handler: A closure called for each broadcasted value
@@ -130,8 +122,8 @@ public actor CurrentAsyncThrowingBroadcast<Element: Sendable> {
 	nonisolated
 	public func sink(
 		onValue handler: @escaping @Sendable (Element) -> Void,
-		onError: @escaping @Sendable (any Error) -> Void = { _ in }
-	) -> Task<Void, Never> {
+		onError: @escaping @Sendable (Failure) -> Void = { _ in }
+	) -> Task<Void, Never> where Failure == any Error {
 		Task {
 			do {
 				for try await element in subscribe() {
@@ -142,9 +134,9 @@ public actor CurrentAsyncThrowingBroadcast<Element: Sendable> {
 			}
 		}
 	}
-
+	
 	/// Get the current number of active subscribers
 	public var subscriberCount: Int {
-		storage.count
+		core.subscriberCount
 	}
 }

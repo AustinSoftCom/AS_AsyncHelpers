@@ -31,45 +31,38 @@ import Synchronization
 /// }
 ///
 /// // Producer
-/// await broadcaster.broadcast("Hello")
+/// await broadcaster.yield("Hello")
 /// ```
 public actor CurrentAsyncBroadcast<Element: Sendable> {
-	/// Thread-safe channel storage so `subscribe()` can register channels
-	/// synchronously (before returning), eliminating the race where broadcasts
-	/// arrive before the channel is registered.
-	let storage = ChannelStorage<Element>()
-	let currentValue: Mutex<Element>
-	var isFinished = false
-
+	let core: BroadcastCore<Element, Never>
+	
 	public var value: Element {
-		currentValue.withLock { $0 }
+		core.value
 	}
-
+	
 	public init(initialValue: Element) {
-		currentValue = .init(initialValue)
+		self.core = BroadcastCore(initialValue: .value(initialValue))
 	}
-
+	
+	public init(initialValue: Element, stream: consuming AsyncStream<Element>) {
+		self.core = .init(initialValue: .value(initialValue), stream: stream)
+	}
+	
 	/// Broadcast a value to all subscribers
 	/// - Parameter element: The value to broadcast
 	///
 	/// This method implements per-consumer backpressure. If any consumer is slow,
 	/// only that consumer's channel will apply backpressure. Fast consumers continue
 	/// unaffected by slow consumers.
-	public func broadcast(_ element: Element) async {
-		guard !isFinished else { return }
-
-		currentValue.withLock { $0 = element }
-
-		let channels = storage.allChannels()
-		await withTaskGroup(of: Void.self) { group in
-			for channel in channels {
-				group.addTask {
-					await channel.send(element)
-				}
-			}
-		}
+	public func yield(_ element: Element) async {
+		await core.yield(element)
 	}
-
+	
+	@available(*, deprecated, renamed: "yield", message: "Renamed to yield so AsyncStream code doesn't *have* to change")
+	public func broadcast(_ element: Element) async {
+		await core.yield(element)
+	}
+	
 	/// Subscribe to the broadcast stream
 	/// - Returns: An AsyncStream that receives all broadcasted values
 	///
@@ -79,49 +72,47 @@ public actor CurrentAsyncBroadcast<Element: Sendable> {
 	/// The channel is registered **synchronously** before this method returns,
 	/// so no broadcasts can be missed due to a registration race.
 	nonisolated
-	public func subscribe() -> AsyncStream<Element> {
+	public func subscribe(bufferSize: Int = 64) -> AsyncStream<Element> {
 		let id = UUID()
-		let channel = AsyncChannel<Element>()
-
-		// Register the channel immediately (thread-safe, no Task deferral)
-		storage.insert(channel, id: id)
-
-		let currentValue = self.currentValue.withLock { $0 }
-
-		// Return an AsyncStream that consumes from the channel
-		return AsyncStream { continuation in
-			Task { [weak self] in
-				// Send the current value first
-				continuation.yield(currentValue)
-
-				// Iterate the channel and yield to the continuation
-				for await element in channel {
-					continuation.yield(element)
+		let (stream, continuation) = AsyncStream<Element>.makeStream(
+			bufferingPolicy: .bufferingNewest(bufferSize)
+		)
+		let core = self.core
+		continuation.onTermination = { @Sendable _ in core.remove(id) }   // set before register
+		
+		let drops = Mutex(0)
+		
+		core.register(
+			.init(
+				send: {
+					if case .dropped = continuation.yield($0) {
+						drops.withLock { $0 += 1 }
+					}
+				},
+				finish: { error in
+					let n = drops.withLock { $0 }
+					if n > 0 {
+						log.error("subscriber \(id) dropped \(n) elements")
+					}
+					if let error {
+						log.fatal("Received continuation when I should never receive one: \(error, privacy: .private)")
+						fatalError("Received continuation when I should never receive one: \(error)")
+					} else {
+						continuation.finish()
+					}
 				}
-				continuation.finish()
-
-				// Clean up when iteration completes
-				if let self {
-					self.storage.remove(id)
-				}
-			}
-
-			// Handle early cancellation
-			continuation.onTermination = { @Sendable [weak self] _ in
-				self?.storage.remove(id)
-			}
-		}
+			),
+			id: id
+		)
+		
+		return stream
 	}
-
+	
 	/// Finish all active channels and prevent new broadcasts
 	public func finish() {
-		isFinished = true
-		for channel in storage.allChannels() {
-			channel.finish()
-		}
-		storage.removeAll()
+		core.finish()
 	}
-
+	
 	/// Subscribe with a callback instead of async iteration
 	/// - Parameter handler: A closure called for each broadcasted value
 	/// - Returns: A Task that can be cancelled to stop receiving values
@@ -134,9 +125,9 @@ public actor CurrentAsyncBroadcast<Element: Sendable> {
 			}
 		}
 	}
-
+	
 	/// Get the current number of active subscribers
 	public var subscriberCount: Int {
-		storage.count
+		core.subscriberCount
 	}
 }

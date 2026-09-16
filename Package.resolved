@@ -1,6 +1,15 @@
 {
-  "originHash" : "a577430f970a4ee623340c9b1f355c5a6d1b5a2ded52011445d5a106406b9277",
+  "originHash" : "221d4fd5f8ddf9c56b1eafd60ce436f205af7c47e704c47e80dff36647c6b9fe",
   "pins" : [
+    {
+      "identity" : "as_swiftlog",
+      "kind" : "remoteSourceControl",
+      "location" : "https://gitserver.austinsoft.com/git/AustinSoftSPM/AS_SwiftLog.git",
+      "state" : {
+        "revision" : "81b38a5bbbb25fb045c802a17c2f4403ff103864",
+        "version" : "7.1.0"
+      }
+    },
     {
       "identity" : "swift-async-algorithms",
       "kind" : "remoteSourceControl",

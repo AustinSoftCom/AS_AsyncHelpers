@@ -10,9 +10,9 @@ final class CurrentAsyncBroadcastSingleSubscriberTests: XCTestCase {
 		let stream = CurrentAsyncBroadcast<Int>(initialValue: 42)
 		let subscription = stream.subscribe()
 
-		await stream.broadcast(1)
-		await stream.broadcast(2)
-		await stream.broadcast(3)
+		await stream.yield(1)
+		await stream.yield(2)
+		await stream.yield(3)
 		await stream.finish()
 
 		var received: [Int] = []
@@ -26,7 +26,7 @@ final class CurrentAsyncBroadcastSingleSubscriberTests: XCTestCase {
 		let stream = CurrentAsyncBroadcast<String>(initialValue: "world")
 		let subscription = stream.subscribe()
 
-		await stream.broadcast("hello")
+		await stream.yield("hello")
 		await stream.finish()
 
 		var received: [String] = []
@@ -53,9 +53,9 @@ final class CurrentAsyncBroadcastSingleSubscriberTests: XCTestCase {
 		let stream = CurrentAsyncBroadcast<Int>(initialValue: 42)
 		let subscription = stream.subscribe()
 
-		await stream.broadcast(1)
+		await stream.yield(1)
 		await stream.finish()
-		await stream.broadcast(2)
+		await stream.yield(2)
 
 		var received: [Int] = []
 		for await value in subscription {
@@ -71,8 +71,8 @@ final class CurrentAsyncBroadcastMultipleSubscriberTests: XCTestCase {
 		let sub1 = stream.subscribe()
 		let sub2 = stream.subscribe()
 
-		await stream.broadcast(10)
-		await stream.broadcast(20)
+		await stream.yield(10)
+		await stream.yield(20)
 		await stream.finish()
 
 		var received1: [Int] = []
@@ -91,9 +91,9 @@ final class CurrentAsyncBroadcastMultipleSubscriberTests: XCTestCase {
 		let sub2 = stream.subscribe()
 		let sub3 = stream.subscribe()
 
-		await stream.broadcast(1)
-		await stream.broadcast(2)
-		await stream.broadcast(3)
+		await stream.yield(1)
+		await stream.yield(2)
+		await stream.yield(3)
 		await stream.finish()
 
 		var results: [[Int]] = [[], [], []]
@@ -146,7 +146,7 @@ final class CurrentAsyncBroadcastMultipleSubscriberTests: XCTestCase {
 		}()
 
 		for value in values {
-			await stream.broadcast(value)
+			await stream.yield(value)
 		}
 		await stream.finish()
 
@@ -163,12 +163,12 @@ final class CurrentAsyncBroadcastLateSubscriberTests: XCTestCase {
 		let stream = CurrentAsyncBroadcast<Int>(initialValue: 42)
 		let earlySub = stream.subscribe()
 
-		await stream.broadcast(1)
+		await stream.yield(1)
 
 		let lateSub = stream.subscribe()
 
-		await stream.broadcast(2)
-		await stream.broadcast(3)
+		await stream.yield(2)
+		await stream.yield(3)
 		await stream.finish()
 
 		var earlyReceived: [Int] = []
@@ -185,7 +185,7 @@ final class CurrentAsyncBroadcastLateSubscriberTests: XCTestCase {
 		let stream = CurrentAsyncBroadcast<Int>(initialValue: 42)
 		let earlySub = stream.subscribe()
 
-		await stream.broadcast(1)
+		await stream.yield(1)
 		await stream.finish()
 
 		var earlyReceived: [Int] = []
@@ -224,13 +224,13 @@ final class CurrentAsyncBroadcastCancellationTests: XCTestCase {
 			return result
 		}()
 
-		await stream.broadcast(1)
+		await stream.yield(1)
 
 		task1.cancel()
 		try? await Task.sleep(for: .milliseconds(50))
 
-		await stream.broadcast(2)
-		await stream.broadcast(3)
+		await stream.yield(2)
+		await stream.yield(3)
 		await stream.finish()
 
 		let result2 = await collected2
@@ -243,8 +243,8 @@ final class CurrentAsyncBroadcastTypeTests: XCTestCase {
 		let stream = CurrentAsyncBroadcast<String>(initialValue: "Boo!")
 		let sub = stream.subscribe()
 
-		await stream.broadcast("hello")
-		await stream.broadcast("world")
+		await stream.yield("hello")
+		await stream.yield("world")
 		await stream.finish()
 
 		var received: [String] = []
@@ -262,8 +262,8 @@ final class CurrentAsyncBroadcastTypeTests: XCTestCase {
 		let sub1 = stream.subscribe()
 		let sub2 = stream.subscribe()
 
-		await stream.broadcast(Point(x: 1, y: 2))
-		await stream.broadcast(Point(x: 3, y: 4))
+		await stream.yield(Point(x: 1, y: 2))
+		await stream.yield(Point(x: 3, y: 4))
 		await stream.finish()
 
 		var received1: [Point] = []
@@ -281,9 +281,9 @@ final class CurrentAsyncBroadcastTypeTests: XCTestCase {
 		let stream = CurrentAsyncBroadcast<Int?>(initialValue: nil)
 		let sub = stream.subscribe()
 
-		await stream.broadcast(1)
-		await stream.broadcast(nil)
-		await stream.broadcast(3)
+		await stream.yield(1)
+		await stream.yield(nil)
+		await stream.yield(3)
 		await stream.finish()
 
 		var received: [Int?] = []
@@ -308,9 +308,9 @@ final class CurrentAsyncBroadcastSinkTests: XCTestCase {
 		// Give the sink task time to start iterating
 		try? await Task.sleep(for: .milliseconds(50))
 
-		await stream.broadcast(1)
-		await stream.broadcast(2)
-		await stream.broadcast(3)
+		await stream.yield(1)
+		await stream.yield(2)
+		await stream.yield(3)
 		await stream.finish()
 
 		// Wait for the sink task to complete
@@ -330,11 +330,11 @@ final class CurrentAsyncBroadcastSinkTests: XCTestCase {
 
 		try? await Task.sleep(for: .milliseconds(50))
 
-		await stream.broadcast(1)
+		await stream.yield(1)
 		token.cancel()
 		try? await Task.sleep(for: .milliseconds(50))
 
-		await stream.broadcast(2)
+		await stream.yield(2)
 		await stream.finish()
 
 		let result = received.withLock { $0 }
@@ -355,8 +355,8 @@ final class CurrentAsyncBroadcastSinkTests: XCTestCase {
 
 		try? await Task.sleep(for: .milliseconds(50))
 
-		await stream.broadcast(10)
-		await stream.broadcast(20)
+		await stream.yield(10)
+		await stream.yield(20)
 		await stream.finish()
 
 		await token1.value
@@ -399,7 +399,7 @@ final class CurrentAsyncBroadcastFinishBehaviorTests: XCTestCase {
 		let stream = CurrentAsyncBroadcast<Int>(initialValue: 42)
 		let sub = stream.subscribe()
 
-		await stream.broadcast(1)
+		await stream.yield(1)
 		await stream.finish()
 		await stream.finish()
 		await stream.finish()
