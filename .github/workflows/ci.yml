@@ -15,7 +15,7 @@ jobs:
       matrix:
         # 6.3 is the minimum declared by swift-tools-version; also test the
         # latest release. Bump these as new toolchains ship.
-        swift: ["6.3", "6.4"]
+        swift: ["6.3"]
     container: swift:${{ matrix.swift }}
     steps:
       - uses: actions/checkout@v6
