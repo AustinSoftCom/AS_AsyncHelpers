@@ -1,14 +1,14 @@
-//  Copyright © 2026 AustinSoft.com. All rights reserved worldwide.
-//  Created by Glenn L. Austin on 6/20/26
+//  Copyright © 2026 Glenn L. Austin (AustinSoft.com)
+//  Licensed under the MIT License. See LICENSE.txt for details.
 
-import XCTest
+import Testing
 import Synchronization
 @testable import AS_AsyncHelpers
 
 // MARK: - Single Subscriber Tests
 
-final class CurrentAsyncThrowingBroadcastSingleSubscriberTests: XCTestCase {
-	func testReceivesAllBroadcastedValues() async {
+@Suite struct CurrentAsyncThrowingBroadcastSingleSubscriberTests {
+	@Test func receivesAllBroadcastedValues() async throws {
 		let stream = CurrentAsyncThrowingBroadcast<Int, Error>(initialValue: 42)
 		let subscription = stream.subscribe()
 
@@ -18,17 +18,13 @@ final class CurrentAsyncThrowingBroadcastSingleSubscriberTests: XCTestCase {
 		await stream.finish()
 
 		var received: [Int] = []
-		do {
-			for try await value in subscription {
-				received.append(value)
-			}
-		} catch {
-			XCTFail("Unexpected error: \(error)")
+		for try await value in subscription {
+			received.append(value)
 		}
-		XCTAssertEqual(received, [42, 1, 2, 3])
+		#expect(received == [42, 1, 2, 3])
 	}
 
-	func testFinishEndsStream() async {
+	@Test func finishEndsStream() async throws {
 		let stream = CurrentAsyncThrowingBroadcast<String, Error>(initialValue: "world")
 		let subscription = stream.subscribe()
 
@@ -36,34 +32,26 @@ final class CurrentAsyncThrowingBroadcastSingleSubscriberTests: XCTestCase {
 		await stream.finish()
 
 		var received: [String] = []
-		do {
-			for try await value in subscription {
-				received.append(value)
-			}
-		} catch {
-			XCTFail("Unexpected error: \(error)")
+		for try await value in subscription {
+			received.append(value)
 		}
-		XCTAssertEqual(received, ["world", "hello"])
+		#expect(received == ["world", "hello"])
 	}
 
-	func testEmptyStreamFinishesImmediately() async {
+	@Test func emptyStreamFinishesImmediately() async throws {
 		let stream = CurrentAsyncThrowingBroadcast<Int, Error>(initialValue: 42)
 		let subscription = stream.subscribe()
 
 		await stream.finish()
 
 		var received: [Int] = []
-		do {
-			for try await value in subscription {
-				received.append(value)
-			}
-		} catch {
-			XCTFail("Unexpected error: \(error)")
+		for try await value in subscription {
+			received.append(value)
 		}
-		XCTAssertEqual(received, [42])
+		#expect(received == [42])
 	}
 
-	func testBroadcastAfterFinishIsIgnored() async {
+	@Test func broadcastAfterFinishIsIgnored() async throws {
 		let stream = CurrentAsyncThrowingBroadcast<Int, Error>(initialValue: 42)
 		let subscription = stream.subscribe()
 
@@ -72,21 +60,17 @@ final class CurrentAsyncThrowingBroadcastSingleSubscriberTests: XCTestCase {
 		await stream.yield(2)
 
 		var received: [Int] = []
-		do {
-			for try await value in subscription {
-				received.append(value)
-			}
-		} catch {
-			XCTFail("Unexpected error: \(error)")
+		for try await value in subscription {
+			received.append(value)
 		}
-		XCTAssertEqual(received, [42, 1])
+		#expect(received == [42, 1])
 	}
 }
 
 // MARK: - Error Propagation Tests
 
-final class CurrentAsyncThrowingBroadcastErrorTests: XCTestCase {
-	func testFailPropagatesErrorToSubscriber() async {
+@Suite struct CurrentAsyncThrowingBroadcastErrorTests {
+	@Test func failPropagatesErrorToSubscriber() async {
 		let stream = CurrentAsyncThrowingBroadcast<Int, Error>(initialValue: 42)
 		let subscription = stream.subscribe()
 
@@ -102,11 +86,11 @@ final class CurrentAsyncThrowingBroadcastErrorTests: XCTestCase {
 		} catch {
 			caughtError = error
 		}
-		XCTAssertEqual(received, [42, 1])
-		XCTAssertEqual(caughtError as? TestError, TestError.intentional)
+		#expect(received == [42, 1])
+		#expect(caughtError as? TestError == TestError.intentional)
 	}
 
-	func testFailPropagatesErrorToAllSubscribers() async {
+	@Test func failPropagatesErrorToAllSubscribers() async {
 		let stream = CurrentAsyncThrowingBroadcast<Int, Error>(initialValue: 42)
 		let sub1 = stream.subscribe()
 		let sub2 = stream.subscribe()
@@ -127,13 +111,13 @@ final class CurrentAsyncThrowingBroadcastErrorTests: XCTestCase {
 			for try await value in sub2 { received2.append(value) }
 		} catch { error2 = error }
 
-		XCTAssertEqual(received1, [42, 42])
-		XCTAssertEqual(received2, [42, 42])
-		XCTAssertEqual(error1 as? TestError, TestError.intentional)
-		XCTAssertEqual(error2 as? TestError, TestError.intentional)
+		#expect(received1 == [42, 42])
+		#expect(received2 == [42, 42])
+		#expect(error1 as? TestError == TestError.intentional)
+		#expect(error2 as? TestError == TestError.intentional)
 	}
 
-	func testBroadcastAfterFailIsIgnored() async {
+	@Test func broadcastAfterFailIsIgnored() async {
 		let stream = CurrentAsyncThrowingBroadcast<Int, Error>(initialValue: 42)
 		let subscription = stream.subscribe()
 
@@ -149,11 +133,11 @@ final class CurrentAsyncThrowingBroadcastErrorTests: XCTestCase {
 		} catch {
 			caughtError = error
 		}
-		XCTAssertEqual(received, [42])
-		XCTAssertEqual(caughtError as? TestError, TestError.intentional)
+		#expect(received == [42])
+		#expect(caughtError as? TestError == TestError.intentional)
 	}
 
-	func testFailClearsSubscriberCount() async {
+	@Test func failClearsSubscriberCount() async {
 		let stream = CurrentAsyncThrowingBroadcast<Int, Error>(initialValue: 42)
 		let sub1 = stream.subscribe()
 		let sub2 = stream.subscribe()
@@ -168,12 +152,12 @@ final class CurrentAsyncThrowingBroadcastErrorTests: XCTestCase {
 		try? await Task.sleep(for: .milliseconds(50))
 
 		let countBefore = await stream.subscriberCount
-		XCTAssertEqual(countBefore, 2)
+		#expect(countBefore == 2)
 
 		await stream.finish(throwing: TestError.intentional)
 
 		let countAfter = await stream.subscriberCount
-		XCTAssertEqual(countAfter, 0)
+		#expect(countAfter == 0)
 
 		await drain1
 		await drain2
@@ -182,8 +166,8 @@ final class CurrentAsyncThrowingBroadcastErrorTests: XCTestCase {
 
 // MARK: - Multiple Subscriber Tests
 
-final class CurrentAsyncThrowingBroadcastMultipleSubscriberTests: XCTestCase {
-	func testTwoSubscribersReceiveSameValues() async {
+@Suite struct CurrentAsyncThrowingBroadcastMultipleSubscriberTests {
+	@Test func twoSubscribersReceiveSameValues() async {
 		let stream = CurrentAsyncThrowingBroadcast<Int, Error>(initialValue: 42)
 		let sub1 = stream.subscribe()
 		let sub2 = stream.subscribe()
@@ -198,11 +182,11 @@ final class CurrentAsyncThrowingBroadcastMultipleSubscriberTests: XCTestCase {
 		var received2: [Int] = []
 		do { for try await value in sub2 { received2.append(value) } } catch {}
 
-		XCTAssertEqual(received1, [42, 10, 20])
-		XCTAssertEqual(received2, [42, 10, 20])
+		#expect(received1 == [42, 10, 20])
+		#expect(received2 == [42, 10, 20])
 	}
 
-	func testConcurrentSubscribersReceiveAllValues() async {
+	@Test func concurrentSubscribersReceiveAllValues() async {
 		let stream = CurrentAsyncThrowingBroadcast<Int, Error>(initialValue: 42)
 		let sub1 = stream.subscribe()
 		let sub2 = stream.subscribe()
@@ -228,15 +212,15 @@ final class CurrentAsyncThrowingBroadcastMultipleSubscriberTests: XCTestCase {
 		let result1 = await collected1
 		let result2 = await collected2
 
-		XCTAssertEqual(result1, [42] + values)
-		XCTAssertEqual(result2, [42] + values)
+		#expect(result1 == [42] + values)
+		#expect(result2 == [42] + values)
 	}
 }
 
 // MARK: - Cancellation Tests
 
-final class CurrentAsyncThrowingBroadcastCancellationTests: XCTestCase {
-	func testCancelledSubscriberDoesNotAffectOthers() async {
+@Suite struct CurrentAsyncThrowingBroadcastCancellationTests {
+	@Test func cancelledSubscriberDoesNotAffectOthers() async {
 		let stream = CurrentAsyncThrowingBroadcast<Int, Error>(initialValue: 42)
 		let sub1 = stream.subscribe()
 		let sub2 = stream.subscribe()
@@ -263,14 +247,14 @@ final class CurrentAsyncThrowingBroadcastCancellationTests: XCTestCase {
 		await stream.finish()
 
 		let result2 = await collected2
-		XCTAssertEqual(result2, [42, 1, 2, 3])
+		#expect(result2 == [42, 1, 2, 3])
 	}
 }
 
 // MARK: - Sink Tests
 
-final class CurrentAsyncThrowingBroadcastSinkTests: XCTestCase {
-	func testSinkReceivesAllValues() async {
+@Suite struct CurrentAsyncThrowingBroadcastSinkTests {
+	@Test func sinkReceivesAllValues() async {
 		let stream = CurrentAsyncThrowingBroadcast<Int, Error>(initialValue: 42)
 		let received = Mutex<[Int]>([])
 
@@ -288,10 +272,10 @@ final class CurrentAsyncThrowingBroadcastSinkTests: XCTestCase {
 		await token.value
 
 		let result = received.withLock { $0 }
-		XCTAssertEqual(result, [42, 1, 2, 3])
+		#expect(result == [42, 1, 2, 3])
 	}
 
-	func testSinkReceivesError() async {
+	@Test func sinkReceivesError() async {
 		let stream = CurrentAsyncThrowingBroadcast<Int, Error>(initialValue: 42)
 		let received = Mutex<[Int]>([])
 		let caughtError = Mutex<(any Error)?>(nil)
@@ -314,11 +298,11 @@ final class CurrentAsyncThrowingBroadcastSinkTests: XCTestCase {
 
 		let result = received.withLock { $0 }
 		let error = caughtError.withLock { $0 }
-		XCTAssertEqual(result, [42, 1])
-		XCTAssertEqual(error as? TestError, TestError.intentional)
+		#expect(result == [42, 1])
+		#expect(error as? TestError == TestError.intentional)
 	}
 
-	func testSinkCancellation() async {
+	@Test func sinkCancellation() async {
 		let stream = CurrentAsyncThrowingBroadcast<Int, Error>(initialValue: 42)
 		let received = Mutex<[Int]>([])
 
@@ -336,14 +320,14 @@ final class CurrentAsyncThrowingBroadcastSinkTests: XCTestCase {
 		await stream.finish()
 
 		let result = received.withLock { $0 }
-		XCTAssertEqual(result, [42, 1])
+		#expect(result == [42, 1])
 	}
 }
 
 // MARK: - Finish Behavior Tests
 
-final class CurrentAsyncThrowingBroadcastFinishBehaviorTests: XCTestCase {
-	func testFinishClearsSubscriberCount() async {
+@Suite struct CurrentAsyncThrowingBroadcastFinishBehaviorTests {
+	@Test func finishClearsSubscriberCount() async {
 		let stream = CurrentAsyncThrowingBroadcast<Int, Error>(initialValue: 42)
 		let sub1 = stream.subscribe()
 		let sub2 = stream.subscribe()
@@ -358,18 +342,18 @@ final class CurrentAsyncThrowingBroadcastFinishBehaviorTests: XCTestCase {
 		try? await Task.sleep(for: .milliseconds(50))
 
 		let countBefore = await stream.subscriberCount
-		XCTAssertEqual(countBefore, 2)
+		#expect(countBefore == 2)
 
 		await stream.finish()
 
 		let countAfter = await stream.subscriberCount
-		XCTAssertEqual(countAfter, 0)
+		#expect(countAfter == 0)
 
 		await drain1
 		await drain2
 	}
 
-	func testMultipleFinishCallsAreSafe() async {
+	@Test func multipleFinishCallsAreSafe() async {
 		let stream = CurrentAsyncThrowingBroadcast<Int, Error>(initialValue: 42)
 		let sub = stream.subscribe()
 
@@ -380,10 +364,10 @@ final class CurrentAsyncThrowingBroadcastFinishBehaviorTests: XCTestCase {
 
 		var received: [Int] = []
 		do { for try await value in sub { received.append(value) } } catch {}
-		XCTAssertEqual(received, [42, 1])
+		#expect(received == [42, 1])
 	}
 
-	func testMultipleFailCallsAreSafe() async {
+	@Test func multipleFailCallsAreSafe() async {
 		let stream = CurrentAsyncThrowingBroadcast<Int, Error>(initialValue: 42)
 		let sub = stream.subscribe()
 
@@ -398,7 +382,7 @@ final class CurrentAsyncThrowingBroadcastFinishBehaviorTests: XCTestCase {
 		} catch {
 			caughtError = error
 		}
-		XCTAssertEqual(received, [42, 1])
-		XCTAssertEqual(caughtError as? TestError, TestError.intentional)
+		#expect(received == [42, 1])
+		#expect(caughtError as? TestError == TestError.intentional)
 	}
 }

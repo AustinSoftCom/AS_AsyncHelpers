@@ -1,8 +1,7 @@
-//  Copyright © 2026 AustinSoft.com. All rights reserved worldwide.
-//  Created by Glenn L. Austin on 9/15/26
+//  Copyright © 2026 Glenn L. Austin (AustinSoft.com)
+//  Licensed under the MIT License. See LICENSE.txt for details.
 
 import Foundation
-import AS_SwiftLog
+import Logging
 
-let logger = Log(destinations: [.OS()])
-let log = LogModule(logger: logger, moduleName: "AS_AsyncHelpers")
+public let logger = Logger(label: "AS_AsyncHelpers")
