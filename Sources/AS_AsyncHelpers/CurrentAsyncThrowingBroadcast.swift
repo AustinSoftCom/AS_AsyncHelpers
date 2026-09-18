@@ -1,8 +1,7 @@
-//  Copyright © 2026 AustinSoft.com. All rights reserved worldwide.
-//  Created by Glenn L. Austin on 4/14/26
+//  Copyright © 2026 Glenn L. Austin (AustinSoft.com)
+//  Licensed under the MIT License. See LICENSE.txt for details.
 
 import Foundation
-import AsyncAlgorithms
 import Synchronization
 
 // MARK: - Throwing Multi-Consumer AsyncChannel Broadcaster
@@ -11,7 +10,7 @@ import Synchronization
 ///
 /// Like ``AsyncBroadcast``, this allows multiple independent consumers to
 /// receive all broadcasted values. Additionally, errors can be propagated to
-/// all subscribers via ``fail(with:)``.
+/// all subscribers via ``finish(throwing:)``.
 ///
 /// Usage:
 /// ```swift
@@ -30,19 +29,33 @@ import Synchronization
 ///
 /// // Producer
 /// await broadcaster.yield("Hello")
-/// await broadcaster.fail(with: MyError.somethingWentWrong)
+/// await broadcaster.finish(throwing: MyError.somethingWentWrong)
 /// ```
 public actor CurrentAsyncThrowingBroadcast<Element: Sendable, Failure: Error> {
 	let core: BroadcastCore<Element, Failure>
 	
+	/// The most recently broadcast value.
+	///
+	/// New subscribers receive this value first, before any subsequent broadcasts.
 	public var value: Element {
 		core.value
 	}
-	
+
+	/// Initialize with a starting value so you can use this as an equivalent
+	/// to `CurrentValueSubject` from Combine.
+	/// - Parameter initialValue: The value replayed to subscribers until the
+	///   first broadcast.
 	public init(initialValue: Element) {
 		self.core = BroadcastCore(initialValue: .value(initialValue))
 	}
-	
+
+	/// Initialize to wrap an existing `AsyncThrowingStream` to turn it into a
+	/// broadcaster without the single-consumer aspect of `AsyncThrowingStream`.
+	/// - Parameters:
+	///   - initialValue: The value replayed to subscribers until the stream
+	///     produces its first element.
+	///   - stream: The upstream stream whose elements and terminal error are
+	///     rebroadcast to all subscribers.
 	public init(initialValue: Element, stream: consuming AsyncThrowingStream<Element, Failure>) {
 		self.core = .init(initialValue: .value(initialValue), stream: stream)
 	}
@@ -53,13 +66,21 @@ public actor CurrentAsyncThrowingBroadcast<Element: Sendable, Failure: Error> {
 		await core.yield(element)
 	}
 	
+	/// Broadcast a value to all subscribers.
+	/// - Parameter element: The value to broadcast
+	///
+	/// Deprecated alias for ``yield(_:)``.
 	@available(*, deprecated, renamed: "yield", message: "Renamed to yield so AsyncStream code doesn't *have* to change")
 	public func broadcast(_ element: Element) async {
 		await core.yield(element)
 	}
 	
 	/// Subscribe to the broadcast stream
-	/// - Returns: An AsyncThrowingStream that receives all broadcasted values
+	/// - Parameter bufferSize: The maximum number of elements buffered for this
+	///   subscriber. When the buffer is full the newest elements are kept and the
+	///   oldest are dropped.
+	/// - Returns: An AsyncThrowingStream that receives the current value followed
+	///   by all subsequently broadcasted values
 	///
 	/// Each subscriber gets an independent stream. Multiple subscribers can iterate
 	/// concurrently without interfering with each other.
@@ -87,7 +108,7 @@ public actor CurrentAsyncThrowingBroadcast<Element: Sendable, Failure: Error> {
 				finish: { error in
 					let n = drops.withLock { $0 }
 					if n > 0 {
-						log.error("subscriber \(id) dropped \(n) elements")
+						logger.error("subscriber \(id) dropped \(n) elements")
 					}
 					if let error {
 						continuation.finish(throwing: error)

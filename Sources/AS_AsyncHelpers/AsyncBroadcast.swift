@@ -1,8 +1,7 @@
-//  Copyright © 2026 AustinSoft.com. All rights reserved worldwide.
-//  Created by Glenn L. Austin on 4/14/26
+//  Copyright © 2026 Glenn L. Austin (AustinSoft.com)
+//  Licensed under the MIT License. See LICENSE.txt for details.
 
 import Foundation
-import AsyncAlgorithms
 import Synchronization
 
 // MARK: - Multi-Consumer AsyncChannel Broadcaster
@@ -36,10 +35,14 @@ import Synchronization
 public actor AsyncBroadcast<Element: Sendable> {
 	let core: BroadcastCore<Element, Never>
 
+	/// Initialize "normally" so you can use this as an equivalent to
+	/// `PassthroughSubject` from Combine.
 	public init() {
 		self.core = .init()
 	}
 	
+	/// Initialize to wrap an existing `AsyncStream` to turn it into a
+	/// broadcaster without the single-consumer aspect of `AsyncStream`.
 	public init(stream: consuming AsyncStream<Element>) {
 		self.core = .init(stream: stream)
 	}
@@ -54,12 +57,19 @@ public actor AsyncBroadcast<Element: Sendable> {
 		await core.yield(element)
 	}
 	
+	/// Broadcast a value to all subscribers.
+	/// - Parameter element: The value to broadcast
+	///
+	/// Deprecated alias for ``yield(_:)``.
 	@available(*, deprecated, renamed: "yield", message: "Renamed to yield so AsyncStream code doesn't *have* to change")
 	public func broadcast(_ element: Element) async {
 		await core.yield(element)
 	}
 
 	/// Subscribe to the broadcast stream
+	/// - Parameter bufferSize: The maximum number of elements buffered for this
+	///   subscriber. When the buffer is full the newest elements are kept and the
+	///   oldest are dropped.
 	/// - Returns: An AsyncStream that receives all broadcasted values
 	///
 	/// Each subscriber gets an independent stream. Multiple subscribers can iterate
@@ -85,17 +95,12 @@ public actor AsyncBroadcast<Element: Sendable> {
 						drops.withLock { $0 += 1 }
 					}
 				},
-				finish: { error in
+				finish: { _ in
 					let n = drops.withLock { $0 }
 					if n > 0 {
-						log.error("subscriber \(id) dropped \(n) elements")
+						logger.error("subscriber \(id) dropped \(n) elements")
 					}
-					if let error {
-						log.fatal("Received continuation when I should never receive one: \(error, privacy: .private)")
-						fatalError("Received continuation when I should never receive one: \(error)")
-					} else {
-						continuation.finish()
-					}
+					continuation.finish()
 				}
 			),
 			id: id

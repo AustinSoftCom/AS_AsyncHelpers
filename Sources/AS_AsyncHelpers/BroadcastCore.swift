@@ -1,8 +1,7 @@
-//  Copyright © 2026 AustinSoft.com. All rights reserved worldwide.
-//  Created by Glenn L. Austin on 9/15/26
+//  Copyright © 2026 Glenn L. Austin (AustinSoft.com)
+//  Licensed under the MIT License. See LICENSE.txt for details.
 
 import Foundation
-import AsyncAlgorithms
 import Synchronization
 
 final class BroadcastCore<Element: Sendable, Failure: Error>: Sendable {
@@ -150,15 +149,20 @@ final class BroadcastCore<Element: Sendable, Failure: Error>: Sendable {
 	/// only that consumer's channel will apply backpressure. Fast consumers continue
 	/// unaffected by slow consumers.
 	func yield(_ element: Element) async {
-		state.withLock { s in
+		let sinkValues = state.withLock { s -> [Sink] in
 			guard !s.isFinished else {
-				return
+				return []
 			}
 			if case .value = s.last {
 				s.last = .value(element)
 			}
-			for sink in s.sinks.values {
-				sink.send(element)
+			return s.sinks.values.map({ $0 })
+		}
+		await withTaskGroup(of: Void.self) { group in
+			for sink in sinkValues {
+				group.addTask {
+					sink.send(element)
+				}
 			}
 		}
 	}
