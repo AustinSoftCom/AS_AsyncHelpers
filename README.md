@@ -17,6 +17,7 @@ Swift's built-in `AsyncStream` and `AsyncThrowingStream` only support a **single
 
 - **Multiple independent consumers** — each call to `subscribe()` returns its own `AsyncStream` (or `AsyncThrowingStream`); subscribers never interfere with one another.
 - **No missed values** — subscriptions are registered *synchronously* before `subscribe()` returns, so there is no window in which a broadcast can be lost to a registration race.
+- **Ordered, synchronous delivery** — `yield(_:)` and `finish()` are synchronous and callable from any context (delegate callbacks, an actor's synchronous methods), like `AsyncStream.Continuation.yield`. Every subscriber has the value buffered before `yield` returns, so values arrive in the order they were yielded.
 - **Per-consumer buffering** — a slow consumer only affects its own buffer. Each subscriber gets a bounded buffer (64 elements by default, configurable per subscription) that keeps the newest values; drops are reported through [swift-log](https://github.com/apple/swift-log).
 - **Current-value replay** — the `Current…` variants replay the latest value to each new subscriber before delivering subsequent broadcasts, and expose it directly via the `value` property.
 - **Error propagation** — the throwing variants can finish all subscribers with an error via `finish(throwing:)`.
@@ -77,8 +78,8 @@ Task {
 }
 
 // Producer
-await broadcaster.yield("Hello")   // both consumers receive "Hello"
-await broadcaster.finish()         // both streams end
+broadcaster.yield("Hello")   // both consumers receive "Hello"
+broadcaster.finish()         // both streams end
 ```
 
 If you prefer callbacks over `for await`, use `sink`:
@@ -106,7 +107,7 @@ Task {
     }
 }
 
-await broadcaster.yield("Hello")
+broadcaster.yield("Hello")
 broadcaster.finish(throwing: MyError.somethingWentWrong)  // all consumers throw
 ```
 
@@ -123,7 +124,7 @@ Task {
     }
 }
 
-await status.yield("running")
+status.yield("running")
 
 // The current value is also available directly:
 let current = await status.value   // "running"
@@ -146,9 +147,14 @@ let broadcaster = AsyncBroadcast(stream: stream)
 ## Behavior notes
 
 - **Buffering:** each subscription uses `AsyncStream.Continuation.BufferingPolicy.bufferingNewest` with a default size of 64, configurable via `subscribe(bufferSize:)`. If a consumer falls behind, its oldest buffered values are dropped (other consumers are unaffected), and the total drop count is logged when the subscription ends.
-- **Backpressure isolation:** broadcasting fans out concurrently to all subscribers; a slow consumer never blocks the producer or other consumers.
+- **Backpressure isolation:** `yield` buffers the value in every subscriber's stream and returns; a slow consumer never blocks the producer or other consumers.
 - **After `finish()`:** further `yield` calls are no-ops, and new subscribers receive a stream that finishes immediately — with the terminal error, if the broadcaster was finished with one. The `Current…` variants still replay the last value before finishing.
 - **Logging:** the package logs through swift-log with the label `AS_AsyncHelpers`. It emits nothing during normal operation; only dropped-element reports at `error` level.
+
+## Migration to 2.3
+
+- `yield(_:)` and `finish()` / `finish(throwing:)` are now `nonisolated` and synchronous. Existing `await broadcaster.yield(value)` calls still compile (with a "no 'async' operations" warning); drop the `await`.
+- Replace `Task { await broadcaster.yield(value) }` in synchronous code with `broadcaster.yield(value)`. Separate Tasks can run in any order, so values yielded that way could reach subscribers out of order.
 
 ## Migration from 1.x
 
