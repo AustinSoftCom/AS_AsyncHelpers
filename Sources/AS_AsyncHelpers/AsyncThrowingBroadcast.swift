@@ -28,8 +28,8 @@ import Synchronization
 /// }
 ///
 /// // Producer
-/// await broadcaster.yield("Hello")
-/// await broadcaster.finish(throwing: MyError.somethingWentWrong)
+/// broadcaster.yield("Hello")
+/// broadcaster.finish(throwing: MyError.somethingWentWrong)
 /// ```
 public actor AsyncThrowingBroadcast<Element: Sendable, Failure: Error> {
 	let core: BroadcastCore<Element, Failure>
@@ -48,10 +48,17 @@ public actor AsyncThrowingBroadcast<Element: Sendable, Failure: Error> {
 		self.core = .init(stream: stream)
 	}
 
-	/// Broadcast a value to all subscribers
+	/// Broadcast a value to all subscribers.
 	/// - Parameter element: The value to broadcast
-	public func yield(_ element: Element) async {
-		await core.yield(element)
+	///
+	/// Synchronous and callable from any context, like `AsyncStream.Continuation.yield`: every
+	/// subscriber has the value buffered before this returns, so values arrive in the order they
+	/// were yielded. Each subscriber has its own buffer, so a slow consumer doesn't hold up the
+	/// others. (Before 2.3.0 this was `async`. Call it directly rather than as
+	/// `Task { await broadcaster.yield(value) }`: separate Tasks can run in any order.)
+	nonisolated
+	public func yield(_ element: Element) {
+		core.send(element)
 	}
 	
 	/// Broadcast a value to all subscribers.
@@ -60,7 +67,7 @@ public actor AsyncThrowingBroadcast<Element: Sendable, Failure: Error> {
 	/// Deprecated alias for ``yield(_:)``.
 	@available(*, deprecated, renamed: "yield", message: "Renamed to yield so AsyncStream code doesn't *have* to change")
 	public func broadcast(_ element: Element) async {
-		await core.yield(element)
+		core.send(element)
 	}
 
 	/// Subscribe to the broadcast stream
@@ -111,12 +118,14 @@ public actor AsyncThrowingBroadcast<Element: Sendable, Failure: Error> {
 	}
 
 	/// Finish all active channels normally
+	nonisolated
 	public func finish() {
 		core.finish()
 	}
 	
 	/// Finish all active channels with an error
 	/// - Parameter error: The error to propagate to all subscribers
+	nonisolated
 	public func finish(throwing error: Failure) {
 		core.finish(throwing: error)
 	}

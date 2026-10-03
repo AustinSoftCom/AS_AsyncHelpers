@@ -12,10 +12,10 @@ import Synchronization
 		let stream = AsyncThrowingBroadcast<Int, Error>()
 		let subscription = stream.subscribe()
 
-		await stream.yield(1)
-		await stream.yield(2)
-		await stream.yield(3)
-		await stream.finish()
+		stream.yield(1)
+		stream.yield(2)
+		stream.yield(3)
+		stream.finish()
 
 		var received: [Int] = []
 		for try await value in subscription {
@@ -28,8 +28,8 @@ import Synchronization
 		let stream = AsyncThrowingBroadcast<String, Error>()
 		let subscription = stream.subscribe()
 
-		await stream.yield("hello")
-		await stream.finish()
+		stream.yield("hello")
+		stream.finish()
 
 		var received: [String] = []
 		for try await value in subscription {
@@ -42,7 +42,7 @@ import Synchronization
 		let stream = AsyncThrowingBroadcast<Int, Error>()
 		let subscription = stream.subscribe()
 
-		await stream.finish()
+		stream.finish()
 
 		var received: [Int] = []
 		for try await value in subscription {
@@ -55,9 +55,9 @@ import Synchronization
 		let stream = AsyncThrowingBroadcast<Int, Error>()
 		let subscription = stream.subscribe()
 
-		await stream.yield(1)
-		await stream.finish()
-		await stream.yield(2)
+		stream.yield(1)
+		stream.finish()
+		stream.yield(2)
 
 		var received: [Int] = []
 		for try await value in subscription {
@@ -74,8 +74,8 @@ import Synchronization
 		let stream = AsyncThrowingBroadcast<Int, Error>()
 		let subscription = stream.subscribe()
 
-		await stream.yield(1)
-		await stream.finish(throwing: TestError.intentional)
+		stream.yield(1)
+		stream.finish(throwing: TestError.intentional)
 
 		var received: [Int] = []
 		var caughtError: (any Error)?
@@ -95,8 +95,8 @@ import Synchronization
 		let sub1 = stream.subscribe()
 		let sub2 = stream.subscribe()
 
-		await stream.yield(42)
-		await stream.finish(throwing: TestError.intentional)
+		stream.yield(42)
+		stream.finish(throwing: TestError.intentional)
 
 		var error1: (any Error)?
 		var error2: (any Error)?
@@ -121,8 +121,8 @@ import Synchronization
 		let stream = AsyncThrowingBroadcast<Int, Error>()
 		let subscription = stream.subscribe()
 
-		await stream.finish(throwing: TestError.intentional)
-		await stream.yield(1)
+		stream.finish(throwing: TestError.intentional)
+		stream.yield(1)
 
 		var received: [Int] = []
 		var caughtError: (any Error)?
@@ -154,7 +154,7 @@ import Synchronization
 		let countBefore = await stream.subscriberCount
 		#expect(countBefore == 2)
 
-		await stream.finish(throwing: TestError.intentional)
+		stream.finish(throwing: TestError.intentional)
 
 		let countAfter = await stream.subscriberCount
 		#expect(countAfter == 0)
@@ -172,9 +172,9 @@ import Synchronization
 		let sub1 = stream.subscribe()
 		let sub2 = stream.subscribe()
 
-		await stream.yield(10)
-		await stream.yield(20)
-		await stream.finish()
+		stream.yield(10)
+		stream.yield(20)
+		stream.finish()
 
 		var received1: [Int] = []
 		do { for try await value in sub1 { received1.append(value) } } catch {}
@@ -205,9 +205,9 @@ import Synchronization
 		}()
 
 		for value in values {
-			await stream.yield(value)
+			stream.yield(value)
 		}
-		await stream.finish()
+		stream.finish()
 
 		let result1 = await collected1
 		let result2 = await collected2
@@ -237,14 +237,14 @@ import Synchronization
 			return result
 		}()
 
-		await stream.yield(1)
+		stream.yield(1)
 
 		task1.cancel()
 		try? await Task.sleep(for: .milliseconds(50))
 
-		await stream.yield(2)
-		await stream.yield(3)
-		await stream.finish()
+		stream.yield(2)
+		stream.yield(3)
+		stream.finish()
 
 		let result2 = await collected2
 		#expect(result2 == [1, 2, 3])
@@ -264,10 +264,10 @@ import Synchronization
 
 		try? await Task.sleep(for: .milliseconds(50))
 
-		await stream.yield(1)
-		await stream.yield(2)
-		await stream.yield(3)
-		await stream.finish()
+		stream.yield(1)
+		stream.yield(2)
+		stream.yield(3)
+		stream.finish()
 
 		await token.value
 
@@ -291,8 +291,8 @@ import Synchronization
 
 		try? await Task.sleep(for: .milliseconds(50))
 
-		await stream.yield(1)
-		await stream.finish(throwing: TestError.intentional)
+		stream.yield(1)
+		stream.finish(throwing: TestError.intentional)
 
 		await token.value
 
@@ -312,12 +312,12 @@ import Synchronization
 
 		try? await Task.sleep(for: .milliseconds(50))
 
-		await stream.yield(1)
+		stream.yield(1)
 		token.cancel()
 		try? await Task.sleep(for: .milliseconds(50))
 
-		await stream.yield(2)
-		await stream.finish()
+		stream.yield(2)
+		stream.finish()
 
 		let result = received.withLock { $0 }
 		#expect(result == [1])
@@ -344,7 +344,7 @@ import Synchronization
 		let countBefore = await stream.subscriberCount
 		#expect(countBefore == 2)
 
-		await stream.finish()
+		stream.finish()
 
 		let countAfter = await stream.subscriberCount
 		#expect(countAfter == 0)
@@ -357,10 +357,10 @@ import Synchronization
 		let stream = AsyncThrowingBroadcast<Int, Error>()
 		let sub = stream.subscribe()
 
-		await stream.yield(1)
-		await stream.finish()
-		await stream.finish()
-		await stream.finish()
+		stream.yield(1)
+		stream.finish()
+		stream.finish()
+		stream.finish()
 
 		var received: [Int] = []
 		do { for try await value in sub { received.append(value) } } catch {}
@@ -371,9 +371,9 @@ import Synchronization
 		let stream = AsyncThrowingBroadcast<Int, Error>()
 		let sub = stream.subscribe()
 
-		await stream.yield(1)
-		await stream.finish(throwing: TestError.intentional)
-		await stream.finish(throwing: TestError.other)
+		stream.yield(1)
+		stream.finish(throwing: TestError.intentional)
+		stream.finish(throwing: TestError.other)
 
 		var received: [Int] = []
 		var caughtError: (any Error)?

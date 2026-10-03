@@ -10,10 +10,10 @@ import Synchronization
 		let stream = AsyncBroadcast<Int>()
 		let subscription = stream.subscribe()
 
-		await stream.yield(1)
-		await stream.yield(2)
-		await stream.yield(3)
-		await stream.finish()
+		stream.yield(1)
+		stream.yield(2)
+		stream.yield(3)
+		stream.finish()
 
 		var received: [Int] = []
 		for await value in subscription {
@@ -26,8 +26,8 @@ import Synchronization
 		let stream = AsyncBroadcast<String>()
 		let subscription = stream.subscribe()
 
-		await stream.yield("hello")
-		await stream.finish()
+		stream.yield("hello")
+		stream.finish()
 
 		var received: [String] = []
 		for await value in subscription {
@@ -40,7 +40,7 @@ import Synchronization
 		let stream = AsyncBroadcast<Int>()
 		let subscription = stream.subscribe()
 
-		await stream.finish()
+		stream.finish()
 
 		var received: [Int] = []
 		for await value in subscription {
@@ -53,9 +53,9 @@ import Synchronization
 		let stream = AsyncBroadcast<Int>()
 		let subscription = stream.subscribe()
 
-		await stream.yield(1)
-		await stream.finish()
-		await stream.yield(2)
+		stream.yield(1)
+		stream.finish()
+		stream.yield(2)
 
 		var received: [Int] = []
 		for await value in subscription {
@@ -71,9 +71,9 @@ import Synchronization
 		let sub1 = stream.subscribe()
 		let sub2 = stream.subscribe()
 
-		await stream.yield(10)
-		await stream.yield(20)
-		await stream.finish()
+		stream.yield(10)
+		stream.yield(20)
+		stream.finish()
 
 		var received1: [Int] = []
 		for await value in sub1 { received1.append(value) }
@@ -91,10 +91,10 @@ import Synchronization
 		let sub2 = stream.subscribe()
 		let sub3 = stream.subscribe()
 
-		await stream.yield(1)
-		await stream.yield(2)
-		await stream.yield(3)
-		await stream.finish()
+		stream.yield(1)
+		stream.yield(2)
+		stream.yield(3)
+		stream.finish()
 
 		var results: [[Int]] = [[], [], []]
 		for await value in sub1 { results[0].append(value) }
@@ -122,7 +122,7 @@ import Synchronization
 		#expect(count2 == 2)
 
 		// Consume to avoid warnings
-		await stream.finish()
+		stream.finish()
 		for await _ in sub1 {}
 		for await _ in sub2 {}
 	}
@@ -146,9 +146,9 @@ import Synchronization
 		}()
 
 		for value in values {
-			await stream.yield(value)
+			stream.yield(value)
 		}
-		await stream.finish()
+		stream.finish()
 
 		let result1 = await collected1
 		let result2 = await collected2
@@ -163,13 +163,13 @@ import Synchronization
 		let stream = AsyncBroadcast<Int>()
 		let earlySub = stream.subscribe()
 
-		await stream.yield(1)
+		stream.yield(1)
 
 		let lateSub = stream.subscribe()
 
-		await stream.yield(2)
-		await stream.yield(3)
-		await stream.finish()
+		stream.yield(2)
+		stream.yield(3)
+		stream.finish()
 
 		var earlyReceived: [Int] = []
 		for await value in earlySub { earlyReceived.append(value) }
@@ -185,8 +185,8 @@ import Synchronization
 		let stream = AsyncBroadcast<Int>()
 		let earlySub = stream.subscribe()
 
-		await stream.yield(1)
-		await stream.finish()
+		stream.yield(1)
+		stream.finish()
 
 		var earlyReceived: [Int] = []
 		for await value in earlySub { earlyReceived.append(value) }
@@ -224,14 +224,14 @@ import Synchronization
 			return result
 		}()
 
-		await stream.yield(1)
+		stream.yield(1)
 
 		task1.cancel()
 		try? await Task.sleep(for: .milliseconds(50))
 
-		await stream.yield(2)
-		await stream.yield(3)
-		await stream.finish()
+		stream.yield(2)
+		stream.yield(3)
+		stream.finish()
 
 		let result2 = await collected2
 		#expect(result2 == [1, 2, 3])
@@ -243,9 +243,9 @@ import Synchronization
 		let stream = AsyncBroadcast<String>()
 		let sub = stream.subscribe()
 
-		await stream.yield("hello")
-		await stream.yield("world")
-		await stream.finish()
+		stream.yield("hello")
+		stream.yield("world")
+		stream.finish()
 
 		var received: [String] = []
 		for await value in sub { received.append(value) }
@@ -262,9 +262,9 @@ import Synchronization
 		let sub1 = stream.subscribe()
 		let sub2 = stream.subscribe()
 
-		await stream.yield(Point(x: 1, y: 2))
-		await stream.yield(Point(x: 3, y: 4))
-		await stream.finish()
+		stream.yield(Point(x: 1, y: 2))
+		stream.yield(Point(x: 3, y: 4))
+		stream.finish()
 
 		var received1: [Point] = []
 		for await value in sub1 { received1.append(value) }
@@ -281,10 +281,10 @@ import Synchronization
 		let stream = AsyncBroadcast<Int?>()
 		let sub = stream.subscribe()
 
-		await stream.yield(1)
-		await stream.yield(nil)
-		await stream.yield(3)
-		await stream.finish()
+		stream.yield(1)
+		stream.yield(nil)
+		stream.yield(3)
+		stream.finish()
 
 		var received: [Int?] = []
 		for await value in sub { received.append(value) }
@@ -307,10 +307,10 @@ import Synchronization
 		// Give the sink task time to start iterating
 		try? await Task.sleep(for: .milliseconds(50))
 
-		await stream.yield(1)
-		await stream.yield(2)
-		await stream.yield(3)
-		await stream.finish()
+		stream.yield(1)
+		stream.yield(2)
+		stream.yield(3)
+		stream.finish()
 
 		// Wait for the sink task to complete
 		await token.value
@@ -329,12 +329,12 @@ import Synchronization
 
 		try? await Task.sleep(for: .milliseconds(50))
 
-		await stream.yield(1)
+		stream.yield(1)
 		token.cancel()
 		try? await Task.sleep(for: .milliseconds(50))
 
-		await stream.yield(2)
-		await stream.finish()
+		stream.yield(2)
+		stream.finish()
 
 		let result = received.withLock { $0 }
 		#expect(result == [1])
@@ -354,9 +354,9 @@ import Synchronization
 
 		try? await Task.sleep(for: .milliseconds(50))
 
-		await stream.yield(10)
-		await stream.yield(20)
-		await stream.finish()
+		stream.yield(10)
+		stream.yield(20)
+		stream.finish()
 
 		await token1.value
 		await token2.value
@@ -385,7 +385,7 @@ import Synchronization
 		let countBefore = await stream.subscriberCount
 		#expect(countBefore == 2)
 
-		await stream.finish()
+		stream.finish()
 
 		let countAfter = await stream.subscriberCount
 		#expect(countAfter == 0)
@@ -398,10 +398,10 @@ import Synchronization
 		let stream = AsyncBroadcast<Int>()
 		let sub = stream.subscribe()
 
-		await stream.yield(1)
-		await stream.finish()
-		await stream.finish()
-		await stream.finish()
+		stream.yield(1)
+		stream.finish()
+		stream.finish()
+		stream.finish()
 
 		var received: [Int] = []
 		for await value in sub { received.append(value) }

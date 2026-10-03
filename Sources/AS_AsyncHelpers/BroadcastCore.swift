@@ -65,12 +65,7 @@ final class BroadcastCore<Element: Sendable, Failure: Error>: Sendable {
 					guard let self else {
 						break
 					}
-					await self.yield(element)
-					state.withLock {
-						if case .value = $0.last {
-							$0.last = .value(element)
-						}
-					}
+					self.send(element)   // also updates the current value
 				}
 				await self?.finish()
 			}
@@ -91,12 +86,7 @@ final class BroadcastCore<Element: Sendable, Failure: Error>: Sendable {
 						guard let self else {
 							break
 						}
-						await self.yield(element)
-						state.withLock {
-							if case .value = $0.last {
-								$0.last = .value(element)
-							}
-						}
+						self.send(element)   // also updates the current value
 					}
 					await self?.finish()
 				} catch let error as Failure {
@@ -142,31 +132,28 @@ final class BroadcastCore<Element: Sendable, Failure: Error>: Sendable {
 		}
 	}
 	
-	/// Broadcast a value to all subscribers
+	/// Broadcast a value to all subscribers, synchronously.
 	/// - Parameter element: The value to broadcast
 	///
-	/// This method implements per-consumer backpressure. If any consumer is slow,
-	/// only that consumer's channel will apply backpressure. Fast consumers continue
-	/// unaffected by slow consumers.
-	func yield(_ element: Element) async {
-		let sinkValues = state.withLock { s -> [Sink] in
+	/// Each subscriber's stream has its own buffer, so a slow consumer only fills its own
+	/// buffer and fast consumers are unaffected. Every subscriber has the value buffered when
+	/// this returns, so values sent one after another arrive in that order. Sending under the
+	/// lock also orders them against concurrent senders, `register` (whose replay is sent under
+	/// the same lock), and `finish`.
+	func send(_ element: Element) {
+		state.withLock { s in
 			guard !s.isFinished else {
-				return []
+				return
 			}
 			if case .value = s.last {
 				s.last = .value(element)
 			}
-			return s.sinks.values.map({ $0 })
-		}
-		await withTaskGroup(of: Void.self) { group in
-			for sink in sinkValues {
-				group.addTask {
-					sink.send(element)
-				}
+			for sink in s.sinks.values {
+				sink.send(element)
 			}
 		}
 	}
-	
+
 	/// Finish all active channels and prevent new broadcasts
 	func finish(throwing error: Failure? = nil) async {
 		let sinks: [Sink] = state.withLock { s in
